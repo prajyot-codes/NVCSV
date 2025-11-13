@@ -21,6 +21,8 @@
 #include <thrust/copy.h>
 #include <thrust/count.h>
 #include <thrust/functional.h>
+#include <thrust/sequence.h>
+#include <thrust/execution_policy.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -191,9 +193,7 @@ int main(int argc, char** argv) {
 
     // Count lines (newlines)
     std::cout << "Counting lines..." << std::endl;
-    thrust::device_vector<unsigned long long> line_count(1);
-    line_count[0] = thrust::count(thrust::device, dev_data.begin(), dev_data.end(), '\n');
-    unsigned long long num_lines = line_count[0];
+    unsigned long long num_lines = thrust::count(dev_data.begin(), dev_data.end(), '\n');
     std::cout << "Total lines: " << num_lines << std::endl;
 
     if (num_lines <= 1) {
@@ -201,14 +201,6 @@ int main(int argc, char** argv) {
         free(host_data);
         return 1;
     }
-
-    // Find line boundaries
-    std::cout << "Finding line boundaries..." << std::endl;
-    thrust::device_vector<int> line_starts(num_lines);
-    thrust::device_vector<int> line_ends(num_lines);
-
-    // Simplified: store line start/end positions
-    thrust::sequence(line_starts.begin(), line_starts.end(), 0);
 
     // Read header to determine number of fields
     std::string header_line(host_data);
