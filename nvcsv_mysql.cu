@@ -23,6 +23,7 @@
 #include <thrust/functional.h>
 #include <thrust/sequence.h>
 #include <thrust/execution_policy.h>
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -120,6 +121,17 @@ struct find_newlines_functor {
 
 int main(int argc, char** argv) {
     std::cout << "NVCSV-MySQL Version " << VERSION << std::endl;
+    // Scoped timer: prints total elapsed time when main exits
+    struct ScopedTimer {
+        std::chrono::time_point<std::chrono::high_resolution_clock> start;
+        const char* label;
+        ScopedTimer(const char* l="Total run") : start(std::chrono::high_resolution_clock::now()), label(l) {}
+        ~ScopedTimer() {
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> diff = end - start;
+            std::cerr << "[TIMER] " << label << " elapsed: " << diff.count() << " s" << std::endl;
+        }
+    } _scoped_timer("Total run");
     
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <csv_file>" << std::endl;
