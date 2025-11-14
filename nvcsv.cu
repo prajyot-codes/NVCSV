@@ -10,6 +10,7 @@
 #include <thrust/count.h>
 #include <ctime>
 #include "nvcsv.h"
+#include "mysql_uploader.h"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -223,4 +224,28 @@ int parseCSV(std::string _fileName, int _maxLength, int _parseIndex) {
 		std::cout << d_float[i] << std::endl;
 	}
 	msg("Cleaning...");
+
+	// Optional: if MySQL environment variables are present, upload parsed column
+	const char* mysql_host = getenv("MYSQL_HOST");
+	if (mysql_host) {
+		const char* mysql_user = getenv("MYSQL_USER");
+		const char* mysql_pass = getenv("MYSQL_PASS");
+		const char* mysql_db = getenv("MYSQL_DB");
+		const char* mysql_table = getenv("MYSQL_TABLE");
+		const char* mysql_column = getenv("MYSQL_COLUMN");
+		if (!mysql_user || !mysql_db || !mysql_table || !mysql_column) {
+			msg("MYSQL_* environment variables incomplete. Required: MYSQL_HOST, MYSQL_USER, MYSQL_PASS(optional), MYSQL_DB, MYSQL_TABLE, MYSQL_COLUMN");
+		}
+		else {
+			// copy data back to host
+			thrust::host_vector<double> h_float = d_float;
+			size_t nvals = cnt[0];
+			int rc = upload_to_mysql_from_doubles(mysql_host, mysql_user, mysql_pass ? mysql_pass : "", mysql_db, mysql_table, mysql_column, h_float.data(), nvals);
+			if (rc == 0) {
+				msg("Uploaded parsed column to MySQL successfully.");
+			} else {
+				msg("Failed to upload parsed column to MySQL.");
+			}
+		}
+	}
 }

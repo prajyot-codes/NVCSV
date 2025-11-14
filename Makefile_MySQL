@@ -1,0 +1,68 @@
+# Extended Makefile for NVCSV with MySQL support
+# Usage:
+#   make                              - Build standard NVCSV
+#   make nvcsv_mysql                  - Build GPU-accelerated CSV-to-MySQL tool
+#   make upload_products              - Build CPU-based CSV-to-MySQL tool
+#   make all_mysql                    - Build all MySQL tools
+#   make clean                        - Remove all binaries
+
+CC=nvcc
+GXX=g++
+CUDA_CFLAGS=-O3 -Xptxas -v -use_fast_math -arch=sm_30
+CUDA_SOURCES=nvcsv.cu
+CUDA_BINNAME=nvcsv
+
+# MySQL tools
+MYSQL_CFLAGS=-DMYSQL_UPLOAD
+MYSQL_LDFLAGS=-lmysqlclient
+NVCSV_MYSQL_SOURCES=nvcsv_mysql.cu mysql_uploader.cpp
+NVCSV_MYSQL_BIN=nvcsv_mysql
+
+UPLOAD_PRODUCTS_SOURCES=upload_products.cpp mysql_uploader.cpp
+UPLOAD_PRODUCTS_BIN=upload_products
+
+# Default target
+all: $(CUDA_BINNAME)
+
+# Standard NVCSV
+$(CUDA_BINNAME): $(CUDA_SOURCES)
+	$(CC) $(CUDA_CFLAGS) $(CUDA_SOURCES) -o $(CUDA_BINNAME)
+
+# GPU-accelerated MySQL insertion
+nvcsv_mysql: $(NVCSV_MYSQL_SOURCES)
+	$(CC) -O3 -use_fast_math $(MYSQL_CFLAGS) $(NVCSV_MYSQL_SOURCES) $(MYSQL_LDFLAGS) -o $(NVCSV_MYSQL_BIN)
+
+# CPU-based MySQL insertion
+upload_products: $(UPLOAD_PRODUCTS_SOURCES)
+	$(GXX) -O3 $(MYSQL_CFLAGS) $(UPLOAD_PRODUCTS_SOURCES) $(MYSQL_LDFLAGS) -o $(UPLOAD_PRODUCTS_BIN)
+
+# Build all MySQL tools
+all_mysql: nvcsv_mysql upload_products
+
+# Clean all binaries
+clean:
+	rm -f $(CUDA_BINNAME) $(NVCSV_MYSQL_BIN) $(UPLOAD_PRODUCTS_BIN)
+
+# Help
+help:
+	@echo "NVCSV Makefile Targets:"
+	@echo "  make                 - Build standard NVCSV (GPU column parser)"
+	@echo "  make nvcsv_mysql     - Build GPU-accelerated CSV-to-MySQL tool (fast)"
+	@echo "  make upload_products - Build CPU-based CSV-to-MySQL tool (simple)"
+	@echo "  make all_mysql       - Build all MySQL tools"
+	@echo "  make clean           - Remove all binaries"
+	@echo "  make help            - Show this message"
+	@echo ""
+	@echo "Environment Variables (for running):"
+	@echo "  MYSQL_HOST   - MySQL host (127.0.0.1)"
+	@echo "  MYSQL_USER   - MySQL username"
+	@echo "  MYSQL_PASS   - MySQL password (optional)"
+	@echo "  MYSQL_DB     - Database name"
+	@echo "  MYSQL_TABLE  - Table name"
+	@echo ""
+	@echo "Example:"
+	@echo "  make nvcsv_mysql"
+	@echo "  export MYSQL_HOST=127.0.0.1 MYSQL_USER=root MYSQL_DB=mydb MYSQL_TABLE=products"
+	@echo "  ./nvcsv_mysql products.csv"
+
+.PHONY: all nvcsv_mysql upload_products all_mysql clean help
